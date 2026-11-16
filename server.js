@@ -36,7 +36,6 @@ app.get("/search", async (req, res) => {
   const query = (req.query.q || "").trim().toLowerCase();
   const lessons = await db.collection("lesson").find({}).toArray();
 
-  // empty search box returns every lesson
   if (query === "") {
     return res.json(lessons);
   }
@@ -51,6 +50,35 @@ app.get("/search", async (req, res) => {
   });
 
   res.json(results);
+});
+
+// GET: all teachers
+app.get("/teachers", async (req, res) => {
+  const teachers = await db.collection("teacher").find({}).toArray();
+  res.json(teachers);
+});
+
+// GET: all lessons taught by one teacher
+app.get("/teachers/:id/lessons", async (req, res) => {
+  if (!ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ error: "Invalid teacher id" });
+  }
+
+  const teacher = await db.collection("teacher").findOne({
+    _id: new ObjectId(req.params.id)
+  });
+
+  if (!teacher) {
+    return res.status(404).json({ error: "Teacher not found" });
+  }
+
+  // the teacher stores lesson ids as strings, so convert them to ObjectIds
+  const ids = teacher.lessonIDs.map(id => new ObjectId(id));
+  const lessons = await db.collection("lesson")
+    .find({ _id: { $in: ids } })
+    .toArray();
+
+  res.json(lessons);
 });
 
 // POST: save a new order

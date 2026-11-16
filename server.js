@@ -31,6 +31,28 @@ app.get("/lessons", async (req, res) => {
   res.json(lessons);
 });
 
+// GET: search lessons by subject, location, price or spaces
+app.get("/search", async (req, res) => {
+  const query = (req.query.q || "").trim().toLowerCase();
+  const lessons = await db.collection("lesson").find({}).toArray();
+
+  // empty search box returns every lesson
+  if (query === "") {
+    return res.json(lessons);
+  }
+
+  const results = lessons.filter(lesson => {
+    return (
+      String(lesson.subject).toLowerCase().includes(query) ||
+      String(lesson.location).toLowerCase().includes(query) ||
+      String(lesson.price).includes(query) ||
+      String(lesson.space).includes(query)
+    );
+  });
+
+  res.json(results);
+});
+
 // POST: save a new order
 app.post("/orders", async (req, res) => {
   const { name, phone, lessonIDs, spaces } = req.body;
@@ -67,12 +89,10 @@ app.put("/lessons/:id", async (req, res) => {
 app.get("/enrolment/:lessonid", async (req, res) => {
   const lessonId = req.params.lessonid;
 
-  // find every order that contains this lesson id
   const orders = await db.collection("order")
     .find({ lessonIDs: lessonId })
     .toArray();
 
-  // count how many times the id appears in each order's lessonIDs array
   let slotsPurchased = 0;
   orders.forEach(order => {
     order.lessonIDs.forEach(id => {

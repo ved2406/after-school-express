@@ -25,6 +25,7 @@ app.use("/images", (req, res) => {
 const client = new MongoClient(process.env.MONGODB_URI);
 let db;
 
+// GET: all lessons
 app.get("/lessons", async (req, res) => {
   const lessons = await db.collection("lesson").find({}).toArray();
   res.json(lessons);
@@ -62,11 +63,32 @@ app.put("/lessons/:id", async (req, res) => {
   res.json({ message: "Lesson updated" });
 });
 
+// GET: how many slots have been purchased for one lesson
+app.get("/enrolment/:lessonid", async (req, res) => {
+  const lessonId = req.params.lessonid;
+
+  // find every order that contains this lesson id
+  const orders = await db.collection("order")
+    .find({ lessonIDs: lessonId })
+    .toArray();
+
+  // count how many times the id appears in each order's lessonIDs array
+  let slotsPurchased = 0;
+  orders.forEach(order => {
+    order.lessonIDs.forEach(id => {
+      if (id === lessonId) {
+        slotsPurchased++;
+      }
+    });
+  });
+
+  res.json({ lessonId: lessonId, slotsPurchased: slotsPurchased });
+});
+
 async function start() {
   await client.connect();
   db = client.db("after-school");
   console.log("Connected to MongoDB Atlas");
-  console.log("Routes version 2 loaded");
 
   const port = process.env.PORT || 3000;
   app.listen(port, () => console.log(`Server running on port ${port}`));
